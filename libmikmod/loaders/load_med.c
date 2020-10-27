@@ -149,6 +149,7 @@ static ULONG *ba = NULL;
 static MMD0NOTE *mmd0pat = NULL;
 static MMD1NOTE *mmd1pat = NULL;
 
+static UBYTE medversion;
 static BOOL decimalvolumes;
 static BOOL bpmtempos;
 static BOOL is8channel;
@@ -243,18 +244,44 @@ static UWORD MED_ConvertTempo(UWORD tempo)
 
 static void EffectCvt(UBYTE eff, UBYTE dat)
 {
+	/* FIXME this is for testing bad effects prior to fix. */
+	switch(eff)
+	{
+	case 0x11:
+	case 0x12:
+	case 0x14:
+	case 0x16:
+	case 0x18:
+	case 0x19:
+	case 0x1A:
+	case 0x1B:
+	case 0x1D:
+	case 0x1E:
+	case 0x1F:
+		eff = eff & 0xF;
+	}
+
 	switch (eff) {
-		/* 0x0 0x1 0x2 0x3 0x4 PT effects */
-	  case 0x5:				/* PT vibrato with speed/depth nibbles swapped */
-		UniPTEffect(0x4, (dat >> 4) | ((dat & 0xf) << 4));
+	  /* 0x0: arpeggio */
+	  /* 0x1: portamento up */
+	  /* 0x2: portamento down */
+	  /* 0x3: tone portamento */
+	  /* 0x4: vibrato */
+	  case 0x5:				/* tone portamento + volslide (MMD0: old vibrato) */
+		if(medversion == 0) {
+			/* Approximate conversion, probably wrong.
+			   The entire param is depth and the rate is fixed. */
+			dat = (dat + 3) / 4;
+			UniPTEffect(0x4, 0xb0 | (dat < 0xf ? dat : 0xf));
+			break;
+		}
+		UniPTEffect(eff, dat);
 		break;
-		/* 0x6 0x7 not used */
-	  case 0x6:
-	  case 0x7:
+	  /* 0x6: vibrato + volslide */
+	  /* 0x7: tremolo */
+	  case 0x8:				/* set hold/decay (FIXME- hold/decay not implemented) */
 		break;
-	  case 0x8:				/* midi hold/decay */
-		break;
-	  case 0x9:
+	  case 0x9:				/* set speed */
 		/* Rarely MED modules request values over 0x20 but different OctaMED/OctaMEDPlayer
 		   versions handle that inconsistently (and the docs/UI insist you shouldn't use
 		   them), so just ignore anything above 0x20. */
@@ -264,7 +291,8 @@ static void EffectCvt(UBYTE eff, UBYTE dat)
 			UniEffect(UNI_S3MEFFECTA, dat);
 		}
 		break;
-		/* 0xa 0xb PT effects */
+	  /* 0xa: volslide */
+	  /* 0xb: position jump */
 	  case 0xc:
 		if (decimalvolumes)
 			dat = (dat >> 4) * 10 + (dat & 0xf);
@@ -273,11 +301,11 @@ static void EffectCvt(UBYTE eff, UBYTE dat)
 	  case 0xd:				/* same as PT volslide */
 		UniPTEffect(0xa, dat);
 		break;
-	  case 0xe:				/* synth jmp - midi */
+	  case 0xe:				/* synth jump (FIXME- synth instruments not implemented) */
 		break;
 	  case 0xf:
 		switch (dat) {
-		  case 0:				/* patternbreak */
+		  case 0:			/* patternbreak */
 			UniPTEffect(0xd, 0);
 			break;
 		  case 0xf1:			/* play note twice */
@@ -288,6 +316,9 @@ static void EffectCvt(UBYTE eff, UBYTE dat)
 			break;
 		  case 0xf3:			/* play note three times */
 			UniWriteByte(UNI_MEDEFFECTF3);
+			break;
+		  case 0xfd:			/* set pitch */
+			UniWriteByte(UNI_MEDEFFECT_FD);
 			break;
 		  case 0xfe:			/* stop playing */
 			UniPTEffect(0xb, of.numpat);
@@ -300,8 +331,18 @@ static void EffectCvt(UBYTE eff, UBYTE dat)
 				UniEffect(UNI_MEDSPEED, MED_ConvertTempo(dat));
 		}
 		break;
-	  default:					/* all normal PT effects are handled here */
-		UniPTEffect(eff, dat);
+	  case 0x15:				/* set finetune */
+		/* Valid values are 0x0 to 0x7 and 0xF8 to 0xFF. */
+		if (dat <= 0x7 || dat >= 0xF8)
+			UniPTEffect(0xe, 0x50 | (dat & 0xF));
+		break;
+	  default:
+		if (eff < 0x10)
+			UniPTEffect(eff, dat);
+#ifdef MIKMOD_DEBUG
+		else
+			fprintf(stderr, "unsupported OctaMED command %u\n", eff);
+#endif
 		break;
 	}
 }
@@ -318,7 +359,7 @@ static UBYTE *MED_Convert1(int count, int col)
 
 		note = n->a & 0x7f;
 		inst = n->b & 0x3f;
-		eff = n->c & 0xf;
+		eff = n->c;
 		dat = n->d;
 
 		if (inst)
@@ -676,6 +717,9 @@ static BOOL MED_Load(BOOL curious)
 			if (ms->sample[t].replen > 1)
 				q->flags |= SF_LOOP;
 
+			if(ms->sample[t].svol <= 64)
+				q->volume = ms->sample[t].svol;
+
 			/* don't load sample if length>='MMD0'...
 			   such kluges make libmikmod's code unique !!! */
 			if (q->length >= MMD0_string)
@@ -712,11 +756,13 @@ static BOOL MED_Load(BOOL curious)
 	}
 
 	if (mh->id == MMD0_string) {
+		medversion = 0;
 		if (!LoadMEDPatterns()) {
 			_mm_errno = MMERR_LOADING_PATTERN;
 			return 0;
 		}
 	} else if (mh->id == MMD1_string) {
+		medversion = 1;
 		if (!LoadMMD1Patterns()) {
 			_mm_errno = MMERR_LOADING_PATTERN;
 			return 0;

@@ -2130,22 +2130,63 @@ static int DoMEDSpeed(UWORD tick, UWORD flags, MP_CONTROL *a, MODULE *mod, SWORD
 
 static int DoMEDEffectF1(UWORD tick, UWORD flags, MP_CONTROL *a, MODULE *mod, SWORD channel)
 {
-	DoEEffects(tick, flags, a, mod, channel, 0x90|(mod->sngspd/2));
-
+	/* "Play twice." Despite the documentation, this only retriggers exactly one time
+	   on the third tick (i.e. it is not equivalent to PT E93). */
+	if (tick == 3) {
+		if (a->main.period)
+			a->main.kick = KICK_NOTE;
+	}
 	return 0;
 }
 
 static int DoMEDEffectF2(UWORD tick, UWORD flags, MP_CONTROL *a, MODULE *mod, SWORD channel)
 {
-	DoEEffects(tick, flags, a, mod, channel, 0xd0|(mod->sngspd/2));
+	/* Delay for 3 ticks before playing. */
+	DoEEffects(tick, flags, a, mod, channel, 0xd3);
 
 	return 0;
 }
 
 static int DoMEDEffectF3(UWORD tick, UWORD flags, MP_CONTROL *a, MODULE *mod, SWORD channel)
 {
-	DoEEffects(tick, flags, a, mod, channel, 0x90|(mod->sngspd/3));
+	/* "Play three times." Actually, it's just a regular retrigger every 2 ticks. */
+	DoEEffects(tick, flags, a, mod, channel, 0x92);
 
+	return 0;
+}
+
+static int DoMEDEffectFD(UWORD tick, UWORD flags, MP_CONTROL *a, MODULE *mod, SWORD channel)
+{
+	/* Set pitch without triggering a new note. */
+	a->main.kick = KICK_ABSENT;
+	return 0;
+}
+
+static int DoMEDEffect16(UWORD tick, UWORD flags, MP_CONTROL *a, MODULE *mod, SWORD channel)
+{
+	/* Loop (same as PT E6x but with an extended range). */
+	/* FIXME */
+	return 0;
+}
+
+static int DoMEDEffect18(UWORD tick, UWORD flags, MP_CONTROL *a, MODULE *mod, SWORD channel)
+{
+	/* Stop note (same as PT ECx but with an extended range). */
+	/* FIXME */
+	return 0;
+}
+
+static int DoMEDEffect1E(UWORD tick, UWORD flags, MP_CONTROL *a, MODULE *mod, SWORD channel)
+{
+	/* Pattern delay (same as PT EEx but with an extended range). */
+	/* FIXME */
+	return 0;
+}
+
+static int DoMEDEffect1F(UWORD tick, UWORD flags, MP_CONTROL *a, MODULE *mod, SWORD channel)
+{
+	/* Combined note delay and retrigger (same as PT E9x and EDx but can be combined). */
+	/* FIXME */
 	return 0;
 }
 
@@ -2243,6 +2284,12 @@ static effect_func effects[UNI_LAST] = {
 	DoMEDEffectF2,	/* UNI_MEDEFFECTF2 */
 	DoMEDEffectF3,	/* UNI_MEDEFFECTF3 */
 	DoOktArp,	/* UNI_OKTARP */
+	DoNothing,	/* unused */
+	DoMEDEffectFD,	/* UNI_MEDEFFECT_FD */
+	DoMEDEffect16,	/* UNI_MEDEFFECT_16 */
+	DoMEDEffect18,	/* UNI_MEDEFFECT_18 */
+	DoMEDEffect1E,	/* UNI_MEDEFFECT_1E */
+	DoMEDEffect1F,	/* UNI_MEDEFFECT_1F */
 };
 
 static int pt_playeffects(MODULE *mod, SWORD channel, MP_CONTROL *a)
