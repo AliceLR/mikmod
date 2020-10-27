@@ -101,6 +101,7 @@ const UWORD unioperands[UNI_LAST] = {
 	0, /* UNI_MEDEFFECTF3 */
 	2, /* UNI_OKTARP */
 	0, /* not used */
+	2, /* UNI_MEDEFFECT_VIB */
 	0, /* UNI_MEDEFFECT_FD */
 	1, /* UNI_MEDEFFECT_16 */
 	1, /* UNI_MEDEFFECT_18 */

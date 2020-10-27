@@ -342,7 +342,8 @@ enum {
     UNI_FORMAT_LAST,
 
  /* OctaMED effects. */
-    UNI_MEDEFFECT_FD, /* set pitch */
+    UNI_MEDEFFECT_VIB, /* MED vibrato */
+    UNI_MEDEFFECT_FD,  /* set pitch */
     UNI_MEDEFFECT_16,  /* loop */
     UNI_MEDEFFECT_18,  /* stop note */
     UNI_MEDEFFECT_1E,  /* pattern delay */

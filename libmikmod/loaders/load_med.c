@@ -249,7 +249,6 @@ static void EffectCvt(UBYTE eff, UBYTE dat)
 	{
 	case 0x11:
 	case 0x12:
-	case 0x14:
 	case 0x16:
 	case 0x18:
 	case 0x19:
@@ -266,13 +265,18 @@ static void EffectCvt(UBYTE eff, UBYTE dat)
 	  /* 0x1: portamento up */
 	  /* 0x2: portamento down */
 	  /* 0x3: tone portamento */
-	  /* 0x4: vibrato */
+	  case 0x4:				/* vibrato (~2x the speed/depth of PT vibrato) */
+		UniWriteByte(UNI_MEDEFFECT_VIB);
+		UniWriteByte((dat & 0xf0) >> 3);
+		UniWriteByte((dat & 0x0f) << 1);
+		break;
 	  case 0x5:				/* tone portamento + volslide (MMD0: old vibrato) */
 		if(medversion == 0) {
 			/* Approximate conversion, probably wrong.
 			   The entire param is depth and the rate is fixed. */
-			dat = (dat + 3) / 4;
-			UniPTEffect(0x4, 0xb0 | (dat < 0xf ? dat : 0xf));
+			UniWriteByte(UNI_MEDEFFECT_VIB);
+			UniWriteByte(0x16);
+			UniWriteByte((dat + 3) >> 2);
 			break;
 		}
 		UniPTEffect(eff, dat);
@@ -330,6 +334,11 @@ static void EffectCvt(UBYTE eff, UBYTE dat)
 			if (dat <= 240)
 				UniEffect(UNI_MEDSPEED, MED_ConvertTempo(dat));
 		}
+		break;
+	  case 0x14:				/* vibrato (PT compatible depth, ~2x speed) */
+		UniWriteByte(UNI_MEDEFFECT_VIB);
+		UniWriteByte((dat & 0xf0) >> 3);
+		UniWriteByte((dat & 0x0f));
 		break;
 	  case 0x15:				/* set finetune */
 		/* Valid values are 0x0 to 0x7 and 0xF8 to 0xFF. */

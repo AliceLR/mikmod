@@ -2128,6 +2128,21 @@ static int DoMEDSpeed(UWORD tick, UWORD flags, MP_CONTROL *a, MODULE *mod, SWORD
 	return 0;
 }
 
+static int DoMEDEffectVib(UWORD tick, UWORD flags, MP_CONTROL *a, MODULE *mod, SWORD channel)
+{
+	/* MED vibrato (larger speed/depth range than PT vibrato). */
+	UBYTE rate  = UniGetByte();
+	UBYTE depth = UniGetByte();
+	if (!tick) {
+		a->vibspd   = rate;
+		a->vibdepth = depth;
+	}
+	if (a->main.period)
+		DoVibrato(tick, a);
+
+	return 0;
+}
+
 static int DoMEDEffectF1(UWORD tick, UWORD flags, MP_CONTROL *a, MODULE *mod, SWORD channel)
 {
 	/* "Play twice." Despite the documentation, this only retriggers exactly one time
@@ -2285,6 +2300,7 @@ static effect_func effects[UNI_LAST] = {
 	DoMEDEffectF3,	/* UNI_MEDEFFECTF3 */
 	DoOktArp,	/* UNI_OKTARP */
 	DoNothing,	/* unused */
+	DoMEDEffectVib, /* UNI_MEDEFFECT_VIB */
 	DoMEDEffectFD,	/* UNI_MEDEFFECT_FD */
 	DoMEDEffect16,	/* UNI_MEDEFFECT_16 */
 	DoMEDEffect18,	/* UNI_MEDEFFECT_18 */
