@@ -251,9 +251,6 @@ static void EffectCvt(UBYTE eff, UBYTE dat)
 	case 0x12:
 	case 0x16:
 	case 0x18:
-	case 0x19:
-	case 0x1A:
-	case 0x1B:
 	case 0x1D:
 	case 0x1E:
 	case 0x1F:
@@ -302,7 +299,11 @@ static void EffectCvt(UBYTE eff, UBYTE dat)
 			dat = (dat >> 4) * 10 + (dat & 0xf);
 		UniPTEffect(0xc, dat);
 		break;
+	  case 0xa:
 	  case 0xd:				/* same as PT volslide */
+		/* if both nibbles are set, a slide up is performed. */
+		if ((dat & 0xf) && (dat & 0xf0))
+			dat &= 0xf0;
 		UniPTEffect(0xa, dat);
 		break;
 	  case 0xe:				/* synth jump (FIXME- synth instruments not implemented) */
@@ -344,6 +345,18 @@ static void EffectCvt(UBYTE eff, UBYTE dat)
 		/* Valid values are 0x0 to 0x7 and 0xF8 to 0xFF. */
 		if (dat <= 0x7 || dat >= 0xF8)
 			UniPTEffect(0xe, 0x50 | (dat & 0xF));
+		break;
+	  case 0x19:				/* sample offset */
+		UniPTEffect(0x9, dat);
+		break;
+	  case 0x1a:				/* fine volslide up */
+		/* volslide of 0 does nothing. */
+		if (dat)
+			UniEffect(UNI_XMEFFECTEA, dat);
+		break;
+	  case 0x1b:				/* fine volslide down */
+		if (dat)
+			UniEffect(UNI_XMEFFECTEB, dat);
 		break;
 	  default:
 		if (eff < 0x10)
