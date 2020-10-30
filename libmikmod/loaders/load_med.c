@@ -242,7 +242,7 @@ static UWORD MED_ConvertTempo(UWORD tempo)
 	return result < 65535 ? result : 65535;
 }
 
-static void EffectCvt(UBYTE eff, UBYTE dat)
+static void EffectCvt(UBYTE note, UBYTE eff, UBYTE dat)
 {
 	/* FIXME this is for testing bad effects prior to fix. */
 	switch(eff)
@@ -253,7 +253,6 @@ static void EffectCvt(UBYTE eff, UBYTE dat)
 	case 0x18:
 	case 0x1D:
 	case 0x1E:
-	case 0x1F:
 		eff = eff & 0xF;
 	}
 
@@ -314,6 +313,9 @@ static void EffectCvt(UBYTE eff, UBYTE dat)
 			UniPTEffect(0xd, 0);
 			break;
 		  case 0xf1:			/* play note twice */
+			/* Note: OctaMED 6.00d and up will not play FF1/FF3 effects when
+			   they are used on a line without a note. Since MMD2/MMD3 support is
+			   theoretical at this point, allow these unconditionally for now. */
 			UniWriteByte(UNI_MEDEFFECTF1);
 			break;
 		  case 0xf2:			/* delay note */
@@ -358,6 +360,11 @@ static void EffectCvt(UBYTE eff, UBYTE dat)
 		if (dat)
 			UniEffect(UNI_XMEFFECTEB, dat);
 		break;
+	  case 0x1f:				/* combined delay-retrigger */
+		/* This effect does nothing on lines without a note. */
+		if (note)
+			UniEffect(UNI_MEDEFFECT_1F, dat);
+		break;
 	  default:
 		if (eff < 0x10)
 			UniPTEffect(eff, dat);
@@ -388,7 +395,7 @@ static UBYTE *MED_Convert1(int count, int col)
 			UniInstrument(inst - 1);
 		if (note)
 			UniNote(note + 3 * OCTAVE - 1);
-		EffectCvt(eff, dat);
+		EffectCvt(note, eff, dat);
 		UniNewline();
 	}
 	return UniDup();
@@ -417,7 +424,7 @@ static UBYTE *MED_Convert0(int count, int col)
 			UniInstrument(inst - 1);
 		if (note)
 			UniNote(note + 3 * OCTAVE - 1);
-		EffectCvt(eff, dat);
+		EffectCvt(note, eff, dat);
 		UniNewline();
 	}
 	return UniDup();

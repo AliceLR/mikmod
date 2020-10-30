@@ -2164,8 +2164,14 @@ static int DoMEDEffectF2(UWORD tick, UWORD flags, MP_CONTROL *a, MODULE *mod, SW
 
 static int DoMEDEffectF3(UWORD tick, UWORD flags, MP_CONTROL *a, MODULE *mod, SWORD channel)
 {
-	/* "Play three times." Actually, it's just a regular retrigger every 2 ticks. */
-	DoEEffects(tick, flags, a, mod, channel, 0x92);
+	/* "Play three times." Actually, it's just a regular retrigger every 2 ticks,
+	   starting from tick 2. */
+	if (!tick) a->retrig=2;
+	if (!a->retrig) {
+		if (a->main.period) a->main.kick = KICK_NOTE;
+		a->retrig=2;
+	}
+	a->retrig--;
 
 	return 0;
 }
@@ -2200,8 +2206,25 @@ static int DoMEDEffect1E(UWORD tick, UWORD flags, MP_CONTROL *a, MODULE *mod, SW
 
 static int DoMEDEffect1F(UWORD tick, UWORD flags, MP_CONTROL *a, MODULE *mod, SWORD channel)
 {
-	/* Combined note delay and retrigger (same as PT E9x and EDx but can be combined). */
-	/* FIXME */
+	/* Combined note delay and retrigger (same as PT E9x and EDx but can be combined).
+	   The high nibble is delay and the low nibble is retrigger. */
+	UBYTE param = UniGetByte();
+	UBYTE retrig = param & 0xf;
+
+	if (!tick) {
+		a->main.notedelay = (param & 0xf0) >> 4;
+		a->retrig = retrig;
+	} else if (a->main.notedelay) {
+		a->main.notedelay--;
+	}
+
+	if (!a->main.notedelay) {
+		if (retrig && !a->retrig) {
+			if (a->main.period) a->main.kick = KICK_NOTE;
+			a->retrig = retrig;
+		}
+		a->retrig--;
+	}
 	return 0;
 }
 
