@@ -247,9 +247,6 @@ static void EffectCvt(UBYTE note, UBYTE eff, UBYTE dat)
 	/* FIXME this is for testing bad effects prior to fix. */
 	switch(eff)
 	{
-	case 0x11:
-	case 0x12:
-	case 0x16:
 	case 0x18:
 	case 0x1D:
 	case 0x1E:
@@ -338,6 +335,15 @@ static void EffectCvt(UBYTE note, UBYTE eff, UBYTE dat)
 				UniEffect(UNI_MEDSPEED, MED_ConvertTempo(dat));
 		}
 		break;
+	  case 0x11:				/* fine portamento up */
+		/* fine portamento of 0 does nothing. */
+		if (dat)
+			UniEffect(UNI_XMEFFECTE1, dat);
+		break;
+	  case 0x12:				/* fine portamento down */
+		if (dat)
+			UniEffect(UNI_XMEFFECTE2, dat);
+		break;
 	  case 0x14:				/* vibrato (PT compatible depth, ~2x speed) */
 		UniWriteByte(UNI_MEDEFFECT_VIB);
 		UniWriteByte((dat & 0xf0) >> 3);
@@ -347,6 +353,9 @@ static void EffectCvt(UBYTE note, UBYTE eff, UBYTE dat)
 		/* Valid values are 0x0 to 0x7 and 0xF8 to 0xFF. */
 		if (dat <= 0x7 || dat >= 0xF8)
 			UniPTEffect(0xe, 0x50 | (dat & 0xF));
+		break;
+	  case 0x16:				/* loop */
+		UniEffect(UNI_MEDEFFECT_16, dat);
 		break;
 	  case 0x19:				/* sample offset */
 		UniPTEffect(0x9, dat);

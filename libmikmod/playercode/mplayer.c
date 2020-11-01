@@ -906,6 +906,43 @@ static int DoPTEffectD(UWORD tick, UWORD flags, MP_CONTROL *a, MODULE *mod, SWOR
 	return 0;
 }
 
+static void DoLoop(UWORD tick, UWORD flags, MP_CONTROL *a, MODULE *mod, UBYTE param)
+{
+	if (tick) return;
+	if (param) { /* set reppos or repcnt ? */
+		/* set repcnt, so check if repcnt already is set, which means we
+		   are already looping */
+		if (a->pat_repcnt)
+			a->pat_repcnt--; /* already looping, decrease counter */
+		else {
+#if 0
+			/* this would make walker.xm, shipped with Xsoundtracker,
+			   play correctly, but it's better to remain compatible
+			   with FT2 */
+			if ((!(flags&UF_NOWRAP))||(a->pat_reppos!=POS_NONE))
+#endif
+				a->pat_repcnt=param; /* not yet looping, so set repcnt */
+		}
+
+		if (a->pat_repcnt) { /* jump to reppos if repcnt>0 */
+			if (a->pat_reppos==POS_NONE)
+				a->pat_reppos=mod->patpos-1;
+			if (a->pat_reppos==-1) {
+				mod->pat_repcrazy=1;
+				mod->patpos=0;
+			} else
+				mod->patpos=a->pat_reppos;
+		} else a->pat_reppos=POS_NONE;
+	} else {
+		a->pat_reppos=mod->patpos-1; /* set reppos - can be (-1) */
+		/* emulate the FT2 pattern loop (E60) bug:
+		 * http://milkytracker.org/docs/MilkyTracker.html#fxE6x
+		 * roadblas.xm plays correctly with this. */
+		if (flags & UF_FT2QUIRKS) mod->patbrk=mod->patpos;
+	}
+	return;
+}
+
 static void DoEEffects(UWORD tick, UWORD flags, MP_CONTROL *a, MODULE *mod,
 	SWORD channel, UBYTE dat)
 {
@@ -941,39 +978,7 @@ static void DoEEffects(UWORD tick, UWORD flags, MP_CONTROL *a, MODULE *mod,
 		}
 		break;
 	case 0x6: /* set patternloop */
-		if (tick)
-			break;
-		if (nib) { /* set reppos or repcnt ? */
-			/* set repcnt, so check if repcnt already is set, which means we
-			   are already looping */
-			if (a->pat_repcnt)
-				a->pat_repcnt--; /* already looping, decrease counter */
-			else {
-#if 0
-				/* this would make walker.xm, shipped with Xsoundtracker,
-				   play correctly, but it's better to remain compatible
-				   with FT2 */
-				if ((!(flags&UF_NOWRAP))||(a->pat_reppos!=POS_NONE))
-#endif
-					a->pat_repcnt=nib; /* not yet looping, so set repcnt */
-			}
-
-			if (a->pat_repcnt) { /* jump to reppos if repcnt>0 */
-				if (a->pat_reppos==POS_NONE)
-					a->pat_reppos=mod->patpos-1;
-				if (a->pat_reppos==-1) {
-					mod->pat_repcrazy=1;
-					mod->patpos=0;
-				} else
-					mod->patpos=a->pat_reppos;
-			} else a->pat_reppos=POS_NONE;
-		} else {
-			a->pat_reppos=mod->patpos-1; /* set reppos - can be (-1) */
-			/* emulate the FT2 pattern loop (E60) bug:
-			 * http://milkytracker.org/docs/MilkyTracker.html#fxE6x
-			 * roadblas.xm plays correctly with this. */
-			if (flags & UF_FT2QUIRKS) mod->patbrk=mod->patpos;
-		}
+		DoLoop(tick, flags, a, mod, nib);
 		break;
 	case 0x7: /* set tremolo waveform */
 		a->wavecontrol&=0x0f;
@@ -2191,8 +2196,21 @@ static int DoMEDEffectFD(UWORD tick, UWORD flags, MP_CONTROL *a, MODULE *mod, SW
 
 static int DoMEDEffect16(UWORD tick, UWORD flags, MP_CONTROL *a, MODULE *mod, SWORD channel)
 {
-	/* Loop (same as PT E6x but with an extended range). */
-	/* FIXME */
+	/* Loop (similar to PT E6x but with an extended range).
+	   TODO: currently doesn't support the loop point persisting between patterns.
+	   It's not clear if anything actually relies on that. */
+	UBYTE param = UniGetByte();
+	int reppos;
+	int i;
+
+	DoLoop(tick, flags, a, mod, param);
+
+	/* OctaMED repeat position is global so set it for every channel...
+	   This fixes a playback bug found in "(brooker) #01.med", which sets
+	   the jump position in track 2 but jumps in track 1. */
+	reppos = a->pat_reppos;
+	for (i = 0; i < pf->numchn; i++)
+		pf->control[i].pat_reppos = reppos;
 	return 0;
 }
 
