@@ -2216,15 +2216,21 @@ static int DoMEDEffect16(UWORD tick, UWORD flags, MP_CONTROL *a, MODULE *mod, SW
 
 static int DoMEDEffect18(UWORD tick, UWORD flags, MP_CONTROL *a, MODULE *mod, SWORD channel)
 {
-	/* Stop note (same as PT ECx but with an extended range). */
-	/* FIXME */
+	/* Cut note (same as PT ECx but with an extended range). */
+	UBYTE param = UniGetByte();
+	if (tick >= param)
+		a->tmpvolume=0;
+
 	return 0;
 }
 
 static int DoMEDEffect1E(UWORD tick, UWORD flags, MP_CONTROL *a, MODULE *mod, SWORD channel)
 {
 	/* Pattern delay (same as PT EEx but with an extended range). */
-	/* FIXME */
+	UBYTE param = UniGetByte();
+	if (!tick && !mod->patdly2)
+		mod->patdly = (param>=255) ? 255 : param+1;
+
 	return 0;
 }
 

@@ -244,15 +244,6 @@ static UWORD MED_ConvertTempo(UWORD tempo)
 
 static void EffectCvt(UBYTE note, UBYTE eff, UBYTE dat)
 {
-	/* FIXME this is for testing bad effects prior to fix. */
-	switch(eff)
-	{
-	case 0x18:
-	case 0x1D:
-	case 0x1E:
-		eff = eff & 0xF;
-	}
-
 	switch (eff) {
 	  /* 0x0: arpeggio */
 	  /* 0x1: portamento up */
@@ -357,6 +348,9 @@ static void EffectCvt(UBYTE note, UBYTE eff, UBYTE dat)
 	  case 0x16:				/* loop */
 		UniEffect(UNI_MEDEFFECT_16, dat);
 		break;
+	  case 0x18:				/* cut note */
+		UniEffect(UNI_MEDEFFECT_18, dat);
+		break;
 	  case 0x19:				/* sample offset */
 		UniPTEffect(0x9, dat);
 		break;
@@ -368,6 +362,12 @@ static void EffectCvt(UBYTE note, UBYTE eff, UBYTE dat)
 	  case 0x1b:				/* fine volslide down */
 		if (dat)
 			UniEffect(UNI_XMEFFECTEB, dat);
+		break;
+	  case 0x1d:				/* pattern break */
+		UniPTEffect(0xd, dat);
+		break;
+	  case 0x1e:				/* pattern delay */
+		UniEffect(UNI_MEDEFFECT_1E, dat);
 		break;
 	  case 0x1f:				/* combined delay-retrigger */
 		/* This effect does nothing on lines without a note. */
