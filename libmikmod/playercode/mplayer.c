@@ -2230,7 +2230,7 @@ static int DoMEDEffect1E(UWORD tick, UWORD flags, MP_CONTROL *a, MODULE *mod, SW
 	/* Pattern delay (same as PT EEx but with an extended range). */
 	UBYTE param = UniGetByte();
 	if (!tick && !mod->patdly2)
-		mod->patdly = (param>=255) ? 255 : param+1;
+		mod->patdly = (param<255) ? param+1 : 255;
 
 	return 0;
 }
