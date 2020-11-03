@@ -317,6 +317,12 @@ static void EffectCvt(UBYTE note, UBYTE eff, UBYTE dat)
 		  case 0xf3:			/* play note three times */
 			UniWriteByte(UNI_MEDEFFECTF3);
 			break;
+		  case 0xf8:			/* hardware filter off */
+			UniPTEffect(0xe, 0x01);
+			break;
+		  case 0xf9:			/* hardware filter on */
+			UniPTEffect(0xe, 0x00);
+			break;
 		  case 0xfd:			/* set pitch */
 			UniWriteByte(UNI_MEDEFFECT_FD);
 			break;
