@@ -2211,6 +2211,7 @@ static int DoMEDEffect16(UWORD tick, UWORD flags, MP_CONTROL *a, MODULE *mod, SW
 	reppos = a->pat_reppos;
 	for (i = 0; i < pf->numchn; i++)
 		pf->control[i].pat_reppos = reppos;
+
 	return 0;
 }
 

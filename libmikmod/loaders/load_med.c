@@ -246,8 +246,14 @@ static void EffectCvt(UBYTE note, UBYTE eff, UBYTE dat)
 {
 	switch (eff) {
 	  /* 0x0: arpeggio */
-	  /* 0x1: portamento up */
-	  /* 0x2: portamento down */
+	  case 0x1:				/* portamento up (PT compatible, ignore 0) */
+		if (dat)
+			UniPTEffect(0x1, dat);
+		break;
+	  case 0x2:				/* portamento down (PT compatible, ignore 0) */
+		if (dat)
+			UniPTEffect(0x2, dat);
+		break;
 	  /* 0x3: tone portamento */
 	  case 0x4:				/* vibrato (~2x the speed/depth of PT vibrato) */
 		UniWriteByte(UNI_MEDEFFECT_VIB);
@@ -255,7 +261,7 @@ static void EffectCvt(UBYTE note, UBYTE eff, UBYTE dat)
 		UniWriteByte((dat & 0x0f) << 1);
 		break;
 	  case 0x5:				/* tone portamento + volslide (MMD0: old vibrato) */
-		if(medversion == 0) {
+		if (medversion == 0) {
 			/* Approximate conversion, probably wrong.
 			   The entire param is depth and the rate is fixed. */
 			UniWriteByte(UNI_MEDEFFECT_VIB);
@@ -270,12 +276,11 @@ static void EffectCvt(UBYTE note, UBYTE eff, UBYTE dat)
 	  case 0x8:				/* set hold/decay (FIXME- hold/decay not implemented) */
 		break;
 	  case 0x9:				/* set speed */
-		/* Rarely MED modules request values over 0x20 but different OctaMED/OctaMEDPlayer
-		   versions handle that inconsistently (and the docs/UI insist you shouldn't use
-		   them), so just ignore anything above 0x20. */
-		if (dat <= 0x20) {
-			if (!dat)
-				dat = of.initspeed;
+		/* TODO: Rarely MED modules request values of 0x00 or >0x20. In most Amiga versions
+		   these behave as speed=(param & 0x1F) ? (param & 0x1F) : 32. From Soundstudio 2
+		   up, these have different behavior. Since the docs/UI insist you shouldn't use
+		   these values and not many modules use these, just ignore them for now. */
+		if (dat >= 0x01 && dat <= 0x20) {
 			UniEffect(UNI_S3MEFFECTA, dat);
 		}
 		break;
