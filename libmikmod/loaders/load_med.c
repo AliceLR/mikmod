@@ -751,9 +751,14 @@ static BOOL MED_Load(BOOL curious)
 		ReadComment(me->annolen);
 	}
 
-	if (!AllocSamples())
+	/* TODO: should do an initial scan for IFFOCT instruments to determine the
+	   actual number of samples (instead of assuming 1-to-1). */
+	if (!AllocSamples() || !AllocInstruments())
 		return 0;
+
+	of.flags |= UF_INST;
 	q = of.samples;
+	d = of.instruments;
 	for (t = 0; t < of.numins; t++) {
 		q->flags = SF_SIGNED;
 		q->volume = 64;
@@ -823,10 +828,14 @@ static BOOL MED_Load(BOOL curious)
 			_mm_fseek(modreader, me->iinfo + t * me->i_ext_entrsz, SEEK_SET);
 			_mm_read_UBYTES(ii.name, 40, modreader);
 			q->samplename = DupStr((char*)ii.name, 40, 1);
-		} else
+			d->insname = DupStr((char*)ii.name, 40, 1);
+		} else {
 			q->samplename = NULL;
+			d->insname = NULL;
+		}
 
 		q++;
+		d++;
 	}
 
 	if (mh->id == MMD0_string) {
@@ -846,15 +855,11 @@ static BOOL MED_Load(BOOL curious)
 		return 0;
 	}
 
-	/* Instruments need to be done after patterns because the number of tracks
-	   affects how they behave... */
-	if (!AllocInstruments())
-		return 0;
-
+	/* Instrument note mapping needs to be done after patterns since
+	   the number of tracks affects how this behaves... */
 	if (of.numchn > 4)
 		mixing = 1;
 
-	of.flags |= UF_INST;
 	d = of.instruments;
 	for (t = 0; t < ms->numsamples; t++) {
 		for (t2 = 0; t2 < MEDNOTECNT; t2++) {
