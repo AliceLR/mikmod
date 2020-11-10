@@ -587,7 +587,7 @@ static BOOL MED_Load(BOOL curious)
 {
 	int t, t2;
 	ULONG sa[64];
-	MEDINSTHEADER s[64];
+	MEDINSTHEADER s;
 	INSTRUMENT *d;
 	SAMPLE *q;
 	MEDSAMPLE *mss;
@@ -758,12 +758,13 @@ static BOOL MED_Load(BOOL curious)
 	for (t = 0; t < of.numins; t++) {
 		q->flags = SF_SIGNED;
 		q->volume = 64;
+		s.type = INST_SAMPLE;
 		if (sa[t]) {
 			_mm_fseek(modreader, sa[t], SEEK_SET);
-			s[t].length = _mm_read_M_ULONG(modreader);
-			s[t].type = _mm_read_M_SWORD(modreader);
+			s.length = _mm_read_M_ULONG(modreader);
+			s.type = _mm_read_M_SWORD(modreader);
 
-			switch (s[t].type) {
+			switch (s.type) {
 			  case INST_SAMPLE:
 			  case INST_EXTSAMPLE:
 				break;
@@ -776,7 +777,7 @@ static BOOL MED_Load(BOOL curious)
 					_mm_errno = MMERR_MED_SYNTHSAMPLES;
 					return 0;
 				}
-				s[t].length = 0;
+				s.length = 0;
 			}
 
 			if (_mm_eof(modreader)) {
@@ -784,7 +785,7 @@ static BOOL MED_Load(BOOL curious)
 				return 0;
 			}
 
-			q->length = s[t].length;
+			q->length = s.length;
 			q->seekpos = _mm_ftell(modreader);
 			q->loopstart = ms->sample[t].rep << 1;
 			q->loopend = q->loopstart + (ms->sample[t].replen << 1);
@@ -835,7 +836,7 @@ static BOOL MED_Load(BOOL curious)
 			int note = t2 + 3 * OCTAVE + ms->sample[t].strans + ms->playtransp;
 
 			/* TODO: IFFOCT instruments... */
-			switch (s[t].type) {
+			switch (s.type) {
 			  case INST_EXTSAMPLE:
 				/* TODO: not clear if this has the same wrapping behavior as regular samples.
 				   This is a MMD2/MMD3 extension so it has not been tested. */
@@ -881,7 +882,6 @@ static BOOL MED_Load(BOOL curious)
 		_mm_errno = MMERR_NOT_A_MODULE;
 		return 0;
 	}
-
 	return 1;
 }
 
