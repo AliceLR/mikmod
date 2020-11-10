@@ -591,7 +591,6 @@ static BOOL MED_Load(BOOL curious)
 	INSTRUMENT *d;
 	SAMPLE *q;
 	MEDSAMPLE *mss;
-	BOOL mixing = 0;
 
 	/* try to read module header */
 	mh->id = _mm_read_M_ULONG(modreader);
@@ -716,9 +715,6 @@ static BOOL MED_Load(BOOL curious)
 	is8channel = (ms->flags & 0x40) ? 1 : 0;
 	bpmtempos = (ms->flags2 & 0x20) ? 1 : 0;
 
-	if (is8channel)
-		mixing = 1;
-
 	if (bpmtempos) {
 		rowsperbeat = (ms->flags2 & 0x1f) + 1;
 		of.initspeed = ms->tempo2;
@@ -834,6 +830,37 @@ static BOOL MED_Load(BOOL curious)
 			d->insname = NULL;
 		}
 
+		/* Instrument transpose tables. */
+		for (t2 = 0; t2 < MEDNOTECNT; t2++) {
+			int note = t2 + 3 * OCTAVE + ms->sample[t].strans + ms->playtransp;
+
+			/* TODO: IFFOCT instruments... */
+			switch (s[t].type) {
+			  case INST_EXTSAMPLE:
+				/* TODO: not clear if this has the same wrapping behavior as regular samples.
+				   This is a MMD2/MMD3 extension so it has not been tested. */
+				note -= 2 * OCTAVE;
+				/* fall-through */
+
+			  case INST_SAMPLE:
+				/* TODO: in MMD2/MMD3 mixing mode, these wrapping transforms don't apply. */
+				if (1) {
+					if (note >= 10 * OCTAVE) {
+						/* Buggy octaves 8 through A wrap to 2 octaves below octave 1.
+						   Technically they're also a finetune step higher but that's safe
+						   to ignore. */
+						note -= 9 * OCTAVE;
+					} else if (note >= 6 * OCTAVE) {
+						/* Octaves 4 through 7 repeat octave 3. */
+						note = (note % 12) + 5 * OCTAVE;
+					}
+				}
+				d->samplenumber[t2] = t;
+				d->samplenote[t2] = note<0 ? 0 : note>255 ? 255 : note;
+				break;
+			}
+		}
+
 		q++;
 		d++;
 	}
@@ -853,44 +880,6 @@ static BOOL MED_Load(BOOL curious)
 	} else {
 		_mm_errno = MMERR_NOT_A_MODULE;
 		return 0;
-	}
-
-	/* Instrument note mapping needs to be done after patterns since
-	   the number of tracks affects how this behaves... */
-	if (of.numchn > 4)
-		mixing = 1;
-
-	d = of.instruments;
-	for (t = 0; t < ms->numsamples; t++) {
-		for (t2 = 0; t2 < MEDNOTECNT; t2++) {
-			int note = t2 + 3 * OCTAVE + ms->sample[t].strans + ms->playtransp;
-
-			/* TODO: IFFOCT instruments... */
-			switch (s[t].type) {
-			  case INST_EXTSAMPLE:
-				/* TODO: not clear if this has the same wrapping behavior as regular samples.
-				   This is a MMD2/MMD3 extension so it has not been tested. */
-				note -= 2 * OCTAVE;
-				/* fall-through */
-
-			  case INST_SAMPLE:
-				if (!mixing) {
-					if (note >= 10 * OCTAVE) {
-						/* Buggy octaves 8 through A wrap to 2 octaves below octave 1.
-						   Technically they're also a finetune step higher but that's safe
-						   to ignore. */
-						note -= 9 * OCTAVE;
-					} else if (note >= 6 * OCTAVE) {
-						/* Octaves 4 through 7 repeat octave 3. */
-						note = (note % 12) + 5 * OCTAVE;
-					}
-				}
-				d->samplenumber[t2] = t;
-				d->samplenote[t2] = note<0 ? 0 : note>255 ? 255 : note;
-				break;
-			}
-		}
-		d++;
 	}
 
 	return 1;
