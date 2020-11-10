@@ -48,6 +48,8 @@ extern int fprintf(FILE *, const char *, ...);
 
 /*========== Module information */
 
+#define MEDNOTECNT 120
+
 typedef struct MEDHEADER {
 	ULONG id;
 	ULONG modlen;
@@ -136,6 +138,19 @@ typedef struct MEDINSTEXT {
 typedef struct MEDINSTINFO {
 	UBYTE name[40];
 } MEDINSTINFO;
+
+enum MEDINSTTYPE {
+	INST_HYBRID	= -2,
+	INST_SYNTH	= -1,
+	INST_SAMPLE	= 0,
+	INST_IFFOCT_5	= 1,
+	INST_IFFOCT_3	= 2,
+	INST_IFFOCT_2	= 3,
+	INST_IFFOCT_4	= 4,
+	INST_IFFOCT_6	= 5,
+	INST_IFFOCT_7	= 6,
+	INST_EXTSAMPLE	= 7
+};
 
 /*========== Loader variables */
 
@@ -414,7 +429,7 @@ static UBYTE *MED_Convert1(int count, int col)
 		if (inst)
 			UniInstrument(inst - 1);
 		if (note)
-			UniNote(note + 3 * OCTAVE - 1);
+			UniNote(note - 1);
 		EffectCvt(note, eff, dat);
 		UniNewline();
 	}
@@ -443,7 +458,7 @@ static UBYTE *MED_Convert0(int count, int col)
 		if (inst)
 			UniInstrument(inst - 1);
 		if (note)
-			UniNote(note + 3 * OCTAVE - 1);
+			UniNote(note - 1);
 		EffectCvt(note, eff, dat);
 		UniNewline();
 	}
@@ -570,11 +585,13 @@ static BOOL LoadMMD1Patterns(void)
 
 static BOOL MED_Load(BOOL curious)
 {
-	int t;
+	int t, t2;
 	ULONG sa[64];
-	MEDINSTHEADER s;
+	MEDINSTHEADER s[64];
+	INSTRUMENT *d;
 	SAMPLE *q;
 	MEDSAMPLE *mss;
+	BOOL mixing = 0;
 
 	/* try to read module header */
 	mh->id = _mm_read_M_ULONG(modreader);
@@ -699,6 +716,9 @@ static BOOL MED_Load(BOOL curious)
 	is8channel = (ms->flags & 0x40) ? 1 : 0;
 	bpmtempos = (ms->flags2 & 0x20) ? 1 : 0;
 
+	if (is8channel)
+		mixing = 1;
+
 	if (bpmtempos) {
 		rowsperbeat = (ms->flags2 & 0x1f) + 1;
 		of.initspeed = ms->tempo2;
@@ -739,10 +759,15 @@ static BOOL MED_Load(BOOL curious)
 		q->volume = 64;
 		if (sa[t]) {
 			_mm_fseek(modreader, sa[t], SEEK_SET);
-			s.length = _mm_read_M_ULONG(modreader);
-			s.type = _mm_read_M_SWORD(modreader);
+			s[t].length = _mm_read_M_ULONG(modreader);
+			s[t].type = _mm_read_M_SWORD(modreader);
 
-			if (s.type) {
+			switch (s[t].type) {
+			  case INST_SAMPLE:
+			  case INST_EXTSAMPLE:
+				break;
+
+			  default:
 #ifdef MIKMOD_DEBUG
 				fprintf(stderr, "\rNon-sample instruments not supported in MED loader yet\n");
 #endif
@@ -750,7 +775,7 @@ static BOOL MED_Load(BOOL curious)
 					_mm_errno = MMERR_MED_SYNTHSAMPLES;
 					return 0;
 				}
-				s.length = 0;
+				s[t].length = 0;
 			}
 
 			if (_mm_eof(modreader)) {
@@ -758,7 +783,7 @@ static BOOL MED_Load(BOOL curious)
 				return 0;
 			}
 
-			q->length = s.length;
+			q->length = s[t].length;
 			q->seekpos = _mm_ftell(modreader);
 			q->loopstart = ms->sample[t].rep << 1;
 			q->loopend = q->loopstart + (ms->sample[t].replen << 1);
@@ -820,6 +845,49 @@ static BOOL MED_Load(BOOL curious)
 		_mm_errno = MMERR_NOT_A_MODULE;
 		return 0;
 	}
+
+	/* Instruments need to be done after patterns because the number of tracks
+	   affects how they behave... */
+	if (!AllocInstruments())
+		return 0;
+
+	if (of.numchn > 4)
+		mixing = 1;
+
+	of.flags |= UF_INST;
+	d = of.instruments;
+	for (t = 0; t < ms->numsamples; t++) {
+		for (t2 = 0; t2 < MEDNOTECNT; t2++) {
+			int note = t2 + 3 * OCTAVE + ms->sample[t].strans + ms->playtransp;
+
+			/* TODO: IFFOCT instruments... */
+			switch (s[t].type) {
+			  case INST_EXTSAMPLE:
+				/* TODO: not clear if this has the same wrapping behavior as regular samples.
+				   This is a MMD2/MMD3 extension so it has not been tested. */
+				note -= 2 * OCTAVE;
+				/* fall-through */
+
+			  case INST_SAMPLE:
+				if (!mixing) {
+					if (note >= 10 * OCTAVE) {
+						/* Buggy octaves 8 through A wrap to 2 octaves below octave 1.
+						   Technically they're also a finetune step higher but that's safe
+						   to ignore. */
+						note -= 9 * OCTAVE;
+					} else if (note >= 6 * OCTAVE) {
+						/* Octaves 4 through 7 repeat octave 3. */
+						note = (note % 12) + 5 * OCTAVE;
+					}
+				}
+				d->samplenumber[t2] = t;
+				d->samplenote[t2] = note<0 ? 0 : note>255 ? 255 : note;
+				break;
+			}
+		}
+		d++;
+	}
+
 	return 1;
 }
 
