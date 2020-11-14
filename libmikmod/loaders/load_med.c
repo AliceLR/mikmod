@@ -585,7 +585,7 @@ static BOOL LoadMMD1Patterns(void)
 
 static BOOL MED_Load(BOOL curious)
 {
-	int t, t2;
+	int t, i;
 	ULONG sa[64];
 	MEDINSTHEADER s;
 	INSTRUMENT *d;
@@ -832,8 +832,8 @@ static BOOL MED_Load(BOOL curious)
 		}
 
 		/* Instrument transpose tables. */
-		for (t2 = 0; t2 < MEDNOTECNT; t2++) {
-			int note = t2 + 3 * OCTAVE + ms->sample[t].strans + ms->playtransp;
+		for (i = 0; i < MEDNOTECNT; i++) {
+			int note = i + 3 * OCTAVE + ms->sample[t].strans + ms->playtransp;
 
 			/* TODO: IFFOCT instruments... */
 			switch (s.type) {
@@ -845,19 +845,17 @@ static BOOL MED_Load(BOOL curious)
 
 			  case INST_SAMPLE:
 				/* TODO: in MMD2/MMD3 mixing mode, these wrapping transforms don't apply. */
-				if (1) {
-					if (note >= 10 * OCTAVE) {
-						/* Buggy octaves 8 through A wrap to 2 octaves below octave 1.
-						   Technically they're also a finetune step higher but that's safe
-						   to ignore. */
-						note -= 9 * OCTAVE;
-					} else if (note >= 6 * OCTAVE) {
-						/* Octaves 4 through 7 repeat octave 3. */
-						note = (note % 12) + 5 * OCTAVE;
-					}
+				if (note >= 10 * OCTAVE) {
+					/* Buggy octaves 8 through A wrap to 2 octaves below octave 1.
+					   Technically they're also a finetune step higher but that's safe
+					   to ignore. */
+					note -= 9 * OCTAVE;
+				} else if (note >= 6 * OCTAVE) {
+					/* Octaves 4 through 7 repeat octave 3. */
+					note = (note % 12) + 5 * OCTAVE;
 				}
-				d->samplenumber[t2] = t;
-				d->samplenote[t2] = note<0 ? 0 : note>255 ? 255 : note;
+				d->samplenumber[i] = t;
+				d->samplenote[i] = note<0 ? 0 : note>255 ? 255 : note;
 				break;
 			}
 		}
