@@ -22,7 +22,7 @@
 
   $Id$
 
-  General DigiMusic (GDM) module loader
+  General Digital Music (GDM) module loader
 
 ==============================================================================*/
 
@@ -114,7 +114,8 @@ typedef struct GDMSAMPLE {
 static GDMHEADER *mh=NULL;	/* pointer to GDM header */
 static GDMNOTE *gdmbuf=NULL;	/* pointer to a complete GDM pattern */
 
-static CHAR GDM_Version[]="General DigiMusic 1.xx";
+#define GDM_VERSION_POS 22
+static CHAR GDM_Version[]="General Digital Music 1.xx";
 
 static BOOL GDM_Test(void)
 {
@@ -388,9 +389,9 @@ static BOOL GDM_Load(BOOL curious)
 
 	/* now we fill */
 	of.modtype=MikMod_strdup(GDM_Version);
-	of.modtype[18]=mh->majorver+'0';
-	of.modtype[20]=mh->minorver/10+'0';
-	of.modtype[21]=mh->minorver%10+'0';
+	of.modtype[GDM_VERSION_POS + 0]=mh->majorver+'0';
+	of.modtype[GDM_VERSION_POS + 2]=mh->minorver/10+'0';
+	of.modtype[GDM_VERSION_POS + 3]=mh->minorver%10+'0';
 	of.songname=DupStr(mh->songname,32,0);
 	of.numpat=mh->patternnum+1;
 	of.reppos=0;
@@ -550,7 +551,7 @@ MIKMODAPI MLOADER load_gdm=
 {
 	NULL,
 	"GDM",
-	"GDM (General DigiMusic)",
+	"GDM (General Digital Music)",
 	GDM_Init,
 	GDM_Test,
 	GDM_Load,

@@ -642,7 +642,7 @@ MIKMODAPI extern struct MLOADER load_amf; /* DMP Advanced Module Format (by Otto
 MIKMODAPI extern struct MLOADER load_asy; /* ASYLUM Music Format 1.0 */
 MIKMODAPI extern struct MLOADER load_dsm; /* DSIK internal module format */
 MIKMODAPI extern struct MLOADER load_far; /* Farandole Composer (by Daniel Potter) */
-MIKMODAPI extern struct MLOADER load_gdm; /* General DigiMusic (by Edward Schlunder) */
+MIKMODAPI extern struct MLOADER load_gdm; /* General Digital Music (by Edward Schlunder) */
 MIKMODAPI extern struct MLOADER load_gt2; /* Graoumf tracker */
 MIKMODAPI extern struct MLOADER load_it;  /* Impulse Tracker (by Jeffrey Lim) */
 MIKMODAPI extern struct MLOADER load_imf; /* Imago Orpheus (by Lutz Roeder) */

@@ -3022,7 +3022,7 @@ This loader recognizes ``Farandole'' modules. These modules can be up to 16
 channels and have Protracker comparable effects.@*
 The Farandole composer was written by Daniel Potter and released in 1994. 
 @item load_gdm
-This loader recognizes the ``General DigiMusic'' format, which is the internal
+This loader recognizes the ``General Digital Music'' format, which is the internal
 format of the ``Bells, Whistles and Sound Boards'' library. This format has the
 same limitations as the S3M format.@*
 The BWSB library was written by Edward Schlunder and first released in 1993.
